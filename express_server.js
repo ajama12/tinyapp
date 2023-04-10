@@ -50,9 +50,15 @@ app.get("/u/:id", (req, res) => {
   res.redirect(longUrl);
 });
 
-app.post('/urls/:id/delete', (req, res) => {
+app.post("/urls/:id", (req, res) => {
+  const updatedLongUrl = req.body.longURL;
+  urlDatabase[req.params.id] = updatedLongUrl;
+  res.redirect("/urls");
+});
+
+app.post("/urls/:id/delete", (req, res) => {
   delete urlDatabase[req.params.id];
-  res.redirect('/urls');
+  res.redirect("/urls");
 });
 
 app.listen(PORT, () => {
