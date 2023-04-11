@@ -67,6 +67,13 @@ app.post("/urls", (req, res) => {
   res.redirect(`/urls/${id}`);
 });
 
+app.get("/login", (req, res) => {
+  const userId = req.cookies.userId;
+  const user = users[userId];
+  const templateVars = { userId, user };
+  res.render("urls_login", templateVars);
+});
+
 app.post("/login", (req, res) => {
   res.redirect("urls");
 });
@@ -92,7 +99,7 @@ app.post("/register", (req, res) => {
   } else if (doesEmailExist(email)) {
     res.status(400).send("Email in Use.");
   } else {
-    users[`${userId}`] = { id: `${userId}`, email, password};
+    users[`${userId}`] = { id: `${userId}`, email, password };
     res.cookie("userId", userId);
     res.redirect("/urls");
   }
