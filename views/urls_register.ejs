@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <%- include('partials/_header') %>
     <meta charset="utf-8" />
     <meta
       name="viewport"
@@ -15,17 +14,15 @@
       integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS"
       crossorigin="anonymous"
     />
-
-    <title>Login - TinyApp</title>
+    <title>TinyApp Register</title>
   </head>
-
   <body>
-
+    <%- include('partials/_header') %>
     <main style="margin: 1em;">
-      <h3>Register</h3>
-      <form class="form-inline" action="/register" method="POST">
+      <h3>Sign Up</h3>
+      <form action="/register" method="POST">
         <div class="form-group mb-2">
-          <label for="email">Email:</label>
+          <label for="email">Email address:</label>
           <input
             class="form-control"
             type="email"
@@ -41,11 +38,10 @@
             placeholder="Enter Password"
             style="width: 300px; margin: 1em"
           />
-          <button type="submit" class="btn btn-primary">Submit</button>
+          <button type="submit" class="btn btn-primary">Register</button>
         </div>
       </form>
     </main>
-
 
     <!-- Bootstrap JS -->
     <script

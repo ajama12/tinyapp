@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <%- include('partials/_header') %>
     <meta charset="utf-8" />
     <meta
       name="viewport"
@@ -15,25 +14,36 @@
       integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS"
       crossorigin="anonymous"
     />
+    <title>TinyApp Login</title>
+  </head>
+  <body>
+    <%- include('partials/_header') %>
+    <main style="margin: 1em;">
+      <h3>Log In</h3>
+      <form action="/login" method="POST">
+        <div class="form-group mb-2">
+          <label for="email">Email address:</label>
+          <input
+            class="form-control"
+            type="email"
+            name="email"
+            placeholder="example@mail.com"
+            style="width: 300px; margin: 1em"
+          />
+          <label for="password">Password:</label>
+          <input
+            class="form-control"
+            type="password"
+            name="password"
+            placeholder="Enter Password"
+            style="width: 300px; margin: 1em"
+          />
+          <button type="submit" class="btn btn-primary">Login</button>
+        </div>
+      </form>
+    </main>
 
-<head>
-  <title> Login Page </title>
-</head>
-
-<body>
-  <main style="margin: 1em;">
-    <h3> Log In </h3>
-    <form method="POST" action="/login">
-      <div>
-        <label>Email</label>
-        <input type="text" name="email" id="email" placeholder="email"/>
-        <label>Password</label>
-        <input type="password" name="password" id="password" placeholder="password"/>
-        <button type="submit"class="btn btn-primary">Log In</button>
-      </div>
-    </form>
-  </main>
-     <!-- Bootstrap JS -->
+    <!-- Bootstrap JS -->
     <script
       src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
       integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
