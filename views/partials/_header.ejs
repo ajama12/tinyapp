@@ -20,18 +20,16 @@
     </div>
     <div>
       <% if (user) { %>
-      <p>Logged in as: <%= user.email %></p>
+        <label>Logged in as: <%= user.id %></label>
       <form method="POST" action="/logout">
         <button type="submit" class="btn btn-primary">Log out</button>
       </form>
       <% } else { %>
-      <form method="POST" action="/login">
+      <div>
         <a href="/login" class="btn btn-primary">Log In</a>
-      </form>
+        <a class="btn btn-light" href="/register">Register</a>
+      </div>
       <% } %>
-    </div>
-    <div>
-      <a class="nav-item nav-link" href="/register">Register</a>
     </div>
   </nav>
 </header>
