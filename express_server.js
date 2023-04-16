@@ -10,10 +10,16 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
 
-//DATABASE CONFIGURATION
+//DATABASE
 const urlDatabase = {
-  b2xVn2: "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com",
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "aJ48lW",
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "aJ48lW",
+  },
 };
 
 const users = {
@@ -49,6 +55,16 @@ const doesEmailExist = function (email) {
   return false;
 };
 
+const urlsForUser = function (id, urlDatabase) {
+  const customURLs = {};
+  for (const shortcutURL in urlDatabase) {
+    if (urlDatabase[shortcutURL].userID === id) {
+      customURLs[shortcutURL] = urlDatabase[shortcutURL];
+    }
+  }
+  return customURLs;
+};
+
 //ROUTES
 app.get("/", (req, res) => {
   res.send("Hello!");
@@ -63,104 +79,106 @@ app.get("/hello", (req, res) => {
 });
 
 //Registration page
-app.get('/register', (req, res) => {
-  //get user's cookie
-  const userId = req.cookies['user_id'];
-  //check if user is logged in
+app.get("/register", (req, res) => {
+  const userId = req.cookies["user_id"];
   if (userId) {
-  return res.redirect('/urls');
+    return res.redirect("/urls");
   }
   const templateVars = {
     user: users[userId],
   };
-  res.render('urls_register', templateVars);
+  res.render("urls_register", templateVars);
 });
 
 //Login Page
-app.get('/login', (req, res) => {
-  const userId = req.cookies['user_id'];
+app.get("/login", (req, res) => {
+  const userId = req.cookies["user_id"];
   const user = users[userId];
   if (user) {
-   return res.redirect('/urls');
+    return res.redirect("/urls");
   }
   const templateVars = {
-    user: users[userId]
+    user: users[userId],
   };
-  res.render('urls_login', templateVars);
+  res.render("urls_login", templateVars);
 });
-
-//URL functionality
 
 //URL index page
 app.get("/urls", (req, res) => {
+  const userId = req.cookies["user_id"];
+  if (!userId) {
+    return res.status(401).send("Please log in/register to access.");
+  }
   const templateVars = {
-    user: users[req.cookies["user_id"]],
-    urls: urlDatabase,
+    user: users[userId],
+    urls: urlsForUser(userId, urlDatabase),
   };
   res.render("urls_index", templateVars);
 });
 
-app.get('/urls/new', (req, res) => {
-  //get user's cookie
-  const userId = req.cookies['user_id'];
-  const user = users[userId];
-  console.log(user);
-  //check if user is logged in
-  if (!user) {
-   return res.redirect('/login');
-  }
-  const templateVars = { 
-    user: users[req.cookies['user_id']],
-  };
-  res.render('urls_new', templateVars);
-});
-
-app.get("/urls/:id", (req, res) => {
-  if (!urlDatabase[req.params.id]) {
-    return res.status(404).send("URL not in database.")
+app.get("/urls/new", (req, res) => {
+  const userId = req.cookies["user_id"];
+  if (!userId) {
+    return res.redirect("/login");
   }
   const templateVars = {
     user: users[req.cookies["user_id"]],
+  };
+  res.render("urls_new", templateVars);
+});
+
+app.get("/urls/:id", (req, res) => {
+  const userId = req.cookies["user_id"];
+  const shortcutURL = req.params.id;
+  if (!urlDatabase[shortcutURL]) {
+    return res.status(404).send("URL ID not in database.");
+  }
+  if (!userId) {
+    return res.status(401).send("Please log in/register to access.");
+  }
+  if (userId !== urlDatabase[shortcutURL].userID) {
+    return res
+      .status(401)
+      .send("Access denied: You do not have proper permissions.");
+  }
+  const templateVars = {
+    user: users[userId],
     id: req.params.id,
-    longURL: urlDatabase[req.params.id],
+    longURL: urlDatabase[req.params.id].longURL,
   };
   res.render("urls_show", templateVars);
 });
 
-app.get('/u/:id', (req, res) => {
+app.get("/u/:id", (req, res) => {
   if (!urlDatabase[req.params.id]) {
-    return res.status(404).send("URL not in database.")
+    return res.status(404).send("URL not in database.");
   }
-  const shortURL = req.params.id;
-  const longURL = urlDatabase[shortURL].longURL;
+  const shortcutURL = req.params.id;
+  const longURL = urlDatabase[shortcutURL].longURL;
   res.redirect(longURL);
 });
 
 //Register new user
-app.post('/register', (req, res) => {
+app.post("/register", (req, res) => {
   const id = generateRandomString();
-  //take email & password from body object
   const email = req.body.email;
   const password = req.body.password;
-  if (req.body.email === '' || req.body.password === '') {
+  if (req.body.email === "" || req.body.password === "") {
     res.status(400);
-    res.send('Incorrect email or password');
+    res.send("Email/password field empty.");
   } else if (doesEmailExist(email)) {
     res.status(400);
     res.send("Unable to register, email in use.");
   } else {
-    //makes new user object
-    const user = {id, email, password};
-    //adds new user to user object
+    const user = { id, email, password };
     users[id] = user;
-    //adds new user id cookie
-    res.cookie('user_id', id);
-    res.redirect('/urls');
+    res.cookie("user_id", id);
+    res.redirect("/urls");
   }
 });
 
 //Login Authentication
-app.post('/login', (req, res) => {
+app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   const userFound = doesEmailExist(email);
@@ -171,8 +189,8 @@ app.post('/login', (req, res) => {
     res.status(403);
     res.send("Incorrect password.");
   } else {
-    res.cookie('user_id', userFound.id);
-    res.redirect('/urls');
+    res.cookie("user_id", userFound.id);
+    res.redirect("/urls");
   }
 });
 
@@ -182,29 +200,54 @@ app.post("/logout", (req, res) => {
   res.redirect("/login");
 });
 
-app.post('/urls', (req, res) => {
-  const userId = req.cookies['user_id'];
+app.post("/urls", (req, res) => {
+  const userId = req.cookies["user_id"];
   if (!userId) {
-   return res.send("Please log in or register to shorten URLs.");
+    return res.status(401).send("Please log in or register to shorten a URL.");
   }
-  const longURL = req.body.longURL;
-  const newShortURL = generateRandomString();
-  //add new url to database
-  urlDatabase[newShortURL] = longURL;
-  // Use route to view the new url you made
-  res.redirect(`/urls/${newShortURL}`);
+  const longURLNew = req.body.longURL;
+  const shortURLNew = generateRandomString();
+  urlDatabase[shortURLNew] = {
+    longURL: longURLNew,
+    userID: userId,
+  };
+  res.redirect(`/urls/${shortURLNew}`);
 });
 
-app.post("/urls/:id", (req, res) => {
-  const updatedLongUrl = req.body.longURL;
-  urlDatabase[req.params.id] = updatedLongUrl;
-  res.redirect("/urls");
+app.post('/urls/:id/', (req, res) => {
+  const userId = req.cookies['user_id'];
+  const usersURLs = urlsForUser(userId, urlDatabase);
+  const shortcutURL = req.params.id;
+  if (!urlDatabase[shortcutURL]) {
+    return res.status(404).send("URL ID not in database.");
+  //if not logged in
+  } if (!userId) {
+    return res.status(401).send("Please log in/register to access.");
+  //if it is not user's url
+  } if (!Object.keys(usersURLs).includes(shortcutURL)) {
+    return res.status(401).send("Access denied: You do not have proper permissions.");
+  } else {
+    const changeLongURL = req.body.type;
+    urlDatabase[req.params.id].longURL = changeLongURL;
+    return res.redirect('/urls');
+  }
 });
 
-app.post("/urls/:id/delete", (req, res) => {
-  const idURL = req.params.id;
-  delete urlDatabase[idURL];
-  res.redirect("/urls");
+app.post('/urls/:id/delete', (req, res) => {
+  const userId = req.cookies['user_id'];
+  const usersURLs = urlsForUser(userId, urlDatabase);
+  const shortcutURL = req.params.id;
+  if (!urlDatabase[shortcutURL]) {
+    return res.status(404).send("URL ID not in database.");
+  } if (!userId) {
+    return res.status(401).send("Please log in/register to access.");
+  } if (!Object.keys(usersURLs).includes(shortcutURL)) {
+    return res.status(401).send("Access denied: You do not have proper permissions.");
+  } else {
+    const urlID = req.params.id;
+    delete urlDatabase[urlID];
+    return res.redirect('/urls');
+  }
 });
 
 app.listen(PORT, () => {
