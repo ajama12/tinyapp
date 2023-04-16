@@ -1,12 +1,20 @@
 //REQUIREMENTS
 const express = require("express");
-const cookieParser = require("cookie-parser");
+// const cookieParser = require("cookie-parser");
+const bcrypt = require("bcryptjs");
+const cookieSession = require("cookie-session");
 
 const app = express();
 const PORT = 8080; // default port 8080
 
 //MIDDLEWARE
-app.use(cookieParser());
+app.use(
+  cookieSession({
+    name: "user-session",
+    keys: ["tinyapp"],
+    maxAge: 5 * 60 * 60 * 1000,
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
 
@@ -22,18 +30,7 @@ const urlDatabase = {
   },
 };
 
-const users = {
-  userRandomID: {
-    id: "userRandomID",
-    email: "user@example.com",
-    password: "ilovecoding",
-  },
-  user2RandomID: {
-    id: "user2RandomID",
-    email: "user2@example.com",
-    password: "thisisa-badpassword",
-  },
-};
+const users = {};
 
 //HELPER FUNCTIONS
 
@@ -67,7 +64,11 @@ const urlsForUser = function (id, urlDatabase) {
 
 //ROUTES
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  const userId = req.session.user_id;
+  if (userId) {
+    return res.redirect("/urls");
+  }
+  return res.redirect("/login");
 });
 
 app.get("/urls.json", (req, res) => {
@@ -80,7 +81,7 @@ app.get("/hello", (req, res) => {
 
 //Registration page
 app.get("/register", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   if (userId) {
     return res.redirect("/urls");
   }
@@ -92,7 +93,7 @@ app.get("/register", (req, res) => {
 
 //Login Page
 app.get("/login", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   const user = users[userId];
   if (user) {
     return res.redirect("/urls");
@@ -105,7 +106,7 @@ app.get("/login", (req, res) => {
 
 //URL index page
 app.get("/urls", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   if (!userId) {
     return res.status(401).send("Please log in/register to access.");
   }
@@ -117,18 +118,18 @@ app.get("/urls", (req, res) => {
 });
 
 app.get("/urls/new", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   if (!userId) {
     return res.redirect("/login");
   }
   const templateVars = {
-    user: users[req.cookies["user_id"]],
+    user: users[req.session.user_id],
   };
   res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:id", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   const shortcutURL = req.params.id;
   if (!urlDatabase[shortcutURL]) {
     return res.status(404).send("URL ID not in database.");
@@ -163,16 +164,19 @@ app.post("/register", (req, res) => {
   const id = generateRandomString();
   const email = req.body.email;
   const password = req.body.password;
+  const hashedPassword = bcrypt.hashSync(password, 10);
   if (req.body.email === "" || req.body.password === "") {
-    res.status(400);
-    res.send("Email/password field empty.");
+    res.status(400).send("Email/password field empty.");
   } else if (doesEmailExist(email)) {
-    res.status(400);
-    res.send("Unable to register, email in use.");
+    res.status(400).send("Email in use, please log in.");
   } else {
-    const user = { id, email, password };
+    const user = {
+      id,
+      email,
+      password: hashedPassword,
+    };
     users[id] = user;
-    res.cookie("user_id", id);
+    req.session.user_id = id;
     res.redirect("/urls");
   }
 });
@@ -182,26 +186,24 @@ app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   const userFound = doesEmailExist(email);
-  if (!userFound.id) {
-    res.status(403);
-    res.send("Please register.");
-  } else if (userFound.password !== password) {
-    res.status(403);
-    res.send("Incorrect password.");
+  if (!userFound) {
+    res.status(403).send("Please register.");
+  } else if (!bcrypt.compareSync(password, userFound.password)) {
+    res.status(403).send("Incorrect password.");
   } else {
-    res.cookie("user_id", userFound.id);
+    req.session.user_id = userFound.id;
     res.redirect("/urls");
   }
 });
 
 //Logout
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  req.session = null;
   res.redirect("/login");
 });
 
 app.post("/urls", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   if (!userId) {
     return res.status(401).send("Please log in or register to shorten a URL.");
   }
@@ -214,39 +216,45 @@ app.post("/urls", (req, res) => {
   res.redirect(`/urls/${shortURLNew}`);
 });
 
-app.post('/urls/:id/', (req, res) => {
-  const userId = req.cookies['user_id'];
+app.post("/urls/:id/", (req, res) => {
+  const userId = req.session.user_id;
   const usersURLs = urlsForUser(userId, urlDatabase);
   const shortcutURL = req.params.id;
   if (!urlDatabase[shortcutURL]) {
     return res.status(404).send("URL ID not in database.");
-  //if not logged in
-  } if (!userId) {
+  }
+  if (!userId) {
     return res.status(401).send("Please log in/register to access.");
-  //if it is not user's url
-  } if (!Object.keys(usersURLs).includes(shortcutURL)) {
-    return res.status(401).send("Access denied: You do not have proper permissions.");
+  }
+  if (!Object.keys(usersURLs).includes(shortcutURL)) {
+    return res
+      .status(401)
+      .send("Access denied: You do not have proper permissions.");
   } else {
     const changeLongURL = req.body.type;
     urlDatabase[req.params.id].longURL = changeLongURL;
-    return res.redirect('/urls');
+    return res.redirect("/urls");
   }
 });
 
-app.post('/urls/:id/delete', (req, res) => {
-  const userId = req.cookies['user_id'];
+app.post("/urls/:id/delete", (req, res) => {
+  const userId = req.session.user_id;
   const usersURLs = urlsForUser(userId, urlDatabase);
   const shortcutURL = req.params.id;
   if (!urlDatabase[shortcutURL]) {
     return res.status(404).send("URL ID not in database.");
-  } if (!userId) {
+  }
+  if (!userId) {
     return res.status(401).send("Please log in/register to access.");
-  } if (!Object.keys(usersURLs).includes(shortcutURL)) {
-    return res.status(401).send("Access denied: You do not have proper permissions.");
+  }
+  if (!Object.keys(usersURLs).includes(shortcutURL)) {
+    return res
+      .status(401)
+      .send("Access denied: You do not have proper permissions.");
   } else {
     const urlID = req.params.id;
     delete urlDatabase[urlID];
-    return res.redirect('/urls');
+    return res.redirect("/urls");
   }
 });
 
